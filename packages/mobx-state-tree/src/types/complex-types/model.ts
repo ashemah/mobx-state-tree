@@ -67,7 +67,7 @@ const defaultObjectOptions = {
     initializers: EMPTY_ARRAY
 }
 
-function toPropertiesObject<T>(properties: IModelProperties<T>): { [K in keyof T]: IType<any, T> } {
+function toPropertiesObject<T>(properties: IModelProperties<T>): {[K in keyof T]: IType<any, T> } {
     // loop through properties and ensures that all items are types
     return Object.keys(properties).reduce(
         (properties, key) => {
@@ -174,7 +174,7 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
                 if (name === HOOK_NAMES.postProcessSnapshot)
                     action = (snapshot: any) => specializedAction(baseAction(snapshot))
                 else
-                    action = function() {
+                    action = function () {
                         baseAction.apply(null, arguments)
                         specializedAction.apply(null, arguments)
                     }
@@ -190,8 +190,8 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
     }
 
     props<SP, TP>(
-        properties: { [K in keyof TP]: IType<any, TP[K]> } & { [K in keyof SP]: IType<SP[K], any> }
-    ): IModelType<S & SP, T & TP> {
+        properties: {[K in keyof TP]: IType<any, TP[K]> } & {[K in keyof SP]: IType<SP[K], any> }
+    ): IModelType<S & SP & Snapshot<SP>, T & TP> {
         return this.cloneAndEnhance({ properties } as any)
     }
 
@@ -215,9 +215,9 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
         A extends { [name: string]: Function } = {},
         V extends Object = {},
         VS extends Object = {}
-    >(
+        >(
         fn: (self: T & IStateTreeNode) => { actions?: A; views?: V; state?: VS }
-    ): IModelType<S, T & A & V & VS> {
+        ): IModelType<S, T & A & V & VS> {
         const initializer = (self: T) => {
             const { actions, views, state, ...rest } = fn(self)
             for (let key in rest)
@@ -252,7 +252,7 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
                 // TODO: mobx currently does not allow redefining computes yet, pending #1121
                 if (isComputed((self as any).$mobx.values[key])) {
                     // TODO: use `isComputed(self, key)`, pending mobx #1120
-                    ;(self as any).$mobx.values[key] = computed(descriptor.get!, {
+                    ; (self as any).$mobx.values[key] = computed(descriptor.get!, {
                         name: key,
                         setter: descriptor.set,
                         context: self
@@ -378,7 +378,7 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
         const res = {} as any
         this.forAllProps((name, type) => {
             // TODO: FIXME, make sure the observable ref is used!
-            ;(extras.getAtom(node.storedValue, name) as any).reportObserved()
+            ; (extras.getAtom(node.storedValue, name) as any).reportObserved()
             res[name] = this.getChildNode(node, name).snapshot
         })
         if (typeof node.storedValue.postProcessSnapshot === "function")
@@ -454,8 +454,8 @@ export class ModelType<S, T> extends ComplexType<S, T> implements IModelType<S, 
 export interface IModelType<S, T> extends IComplexType<S, T & IStateTreeNode> {
     named(newName: string): IModelType<S, T>
     props<SP, TP>(
-        props: { [K in keyof TP]: IType<any, TP[K]> | TP[K] } &
-            { [K in keyof SP]: IType<SP[K], any> | SP[K] }
+        props: {[K in keyof TP]: IType<any, TP[K]> | TP[K]} &
+            {[K in keyof SP]: IType<SP[K], any> | SP[K]}
     ): IModelType<S & Snapshot<SP>, T & TP>
     //props<P>(props: IModelProperties<P>): IModelType<S & Snapshot<P>, T & P>
     views<V extends Object>(fn: (self: T & IStateTreeNode) => V): IModelType<S, T & V>
@@ -467,14 +467,14 @@ export interface IModelType<S, T> extends IComplexType<S, T & IStateTreeNode> {
         A extends { [name: string]: Function } = {},
         V extends Object = {},
         VS extends Object = {}
-    >(
+        >(
         fn: (self: T & IStateTreeNode) => { actions?: A; views?: V; state?: VS }
-    ): IModelType<S, T & A & V & VS>
+        ): IModelType<S, T & A & V & VS>
     preProcessSnapshot(fn: (snapshot: any) => S): IModelType<S, T>
 }
 
-export type IModelProperties<T> = { [K in keyof T]: IType<any, T[K]> | T[K] }
-export type IModelVolatileState<T> = { [K in keyof T]: ((self?: any) => T[K]) | T[K] }
+export type IModelProperties<T> = {[K in keyof T]: IType<any, T[K]> | T[K]}
+export type IModelVolatileState<T> = {[K in keyof T]: ((self?: any) => T[K]) | T[K]}
 
 export type Snapshot<T> = {
     [K in keyof T]?: Snapshot<T[K]> | any // Any because we cannot express conditional types yet, so this escape is needed for refs and such....
